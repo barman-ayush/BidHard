@@ -1,19 +1,19 @@
 import sequelize from "./db.js"
-import "../schema/user.js"   // 👈 IMPORTANT: register models
-import "../schema/auctionItem.js"   // 👈 IMPORTANT: register models
-import "../schema/bid.js"   // 👈 IMPORTANT: register models
+import "../schema/user.js"   
+import "../schema/auctionItem.js"   
+import "../schema/bid.js"   
+import "../schema/index.js"   
 
 export async function initDB() {
   try {
     await sequelize.authenticate()
-    console.log("✅ Database connected")
+    console.log("Database connected")
 
-    // 🔥 CREATE TABLES IF NOT EXISTS
     await sequelize.sync()
-    console.log("🧱 Tables synced")
+    console.log("Tables synced")
 
   } catch (error) {
-    console.error("❌ DB error:", error)
+    console.error("DB error:", error)
     process.exit(1)
   }
 }

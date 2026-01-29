@@ -2,6 +2,9 @@
 
 export function registerDashboardSocket(io, socket) {
   socket.on("JOIN_DASHBOARD", ({ userId }) => {
+    if (socket.data.joinedDashboard) return;
+
+    socket.data.joinedDashboard = true;
     socket.join("dashboard");
     console.log(`📊 User ${userId} joined DASHBOARD`);
   });

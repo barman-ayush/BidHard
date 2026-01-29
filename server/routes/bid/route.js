@@ -3,8 +3,8 @@ import express from "express";
 import AuctionItem from "../../lib/schema/auctionItem.js";
 import sequelize from "../../lib/db/db.js";
 import middleware from "../../middleware.js";
-import Bid from "../../lib/schema/bid.js"
-import User from "../../lib/schema/user.js"
+import Bid from "../../lib/schema/bid.js";
+import User from "../../lib/schema/user.js";
 const router = express.Router();
 
 router.get("/items", async (req, res, next) => {
@@ -69,18 +69,18 @@ router.get("/items/:id", async (req, res, next) => {
 });
 
 router.post("/items/:id/bid", middleware, async (req, res, next) => {
-  const transaction = await sequelize.transaction()
+  const transaction = await sequelize.transaction();
 
   try {
-    const { id } = req.params
-    console.log(req.params , id);
+    const { id } = req.params;
+    console.log(req.params, id);
 
-    const { amount } = req.body
-    const bidderId = req.user.id // 🔥 assumes auth middleware
+    const { amount } = req.body;
+    const bidderId = req.user.id; // 🔥 assumes auth middleware
 
     if (!amount || typeof amount !== "number" || amount <= 0) {
-      await transaction.rollback()
-      return res.status(400).json({ message: "Invalid bid amount" })
+      await transaction.rollback();
+      return res.status(400).json({ message: "Invalid bid amount" });
     }
 
     // 🔒 Lock row
@@ -88,28 +88,27 @@ router.post("/items/:id/bid", middleware, async (req, res, next) => {
       where: { id },
       transaction,
       lock: transaction.LOCK.UPDATE,
-    })
+    });
 
     if (!item) {
-      await transaction.rollback()
-      return res.status(404).json({ message: "Auction item not found" })
+      await transaction.rollback();
+      return res.status(404).json({ message: "Auction item not found" });
     }
 
     // ⏱ Auction ended
     if (new Date() > item.auctionEndTime) {
-      await transaction.rollback()
-      return res.status(400).json({ message: "Auction ended" })
+      await transaction.rollback();
+      return res.status(400).json({ message: "Auction ended" });
     }
 
     // 💰 Bid too low
     if (amount <= Number(item.currentPrice)) {
-      await transaction.rollback()
-      return res.status(409).json({ message: "Outbid" })
+      await transaction.rollback();
+      return res.status(409).json({ message: "Outbid" });
     }
 
-    const oldVersion = item.version
+    const oldVersion = item.version;
 
-    // 🧠 Optimistic concurrency check
     const [updatedRows] = await AuctionItem.update(
       {
         currentPrice: amount,
@@ -123,45 +122,44 @@ router.post("/items/:id/bid", middleware, async (req, res, next) => {
         },
         transaction,
       }
-    )
+    );
 
-    // ❌ Someone else updated first
+    // Someone else updated first
     if (updatedRows === 0) {
-      await transaction.rollback()
+      await transaction.rollback();
       return res.status(409).json({
         message: "Outbid (race condition)",
-      })
+      });
     }
 
-    // 📝 Persist bid
     await Bid.create(
       {
-        itemId : id,
+        itemId: id,
         bidderId,
         amount,
       },
       { transaction }
-    )
+    );
 
-    await transaction.commit()
+    await transaction.commit();
 
     return res.status(201).json({
       success: true,
       id,
       amount,
       serverTime: Date.now(),
-    })
+    });
   } catch (err) {
-    await transaction.rollback()
-    next(err)
+    await transaction.rollback();
+    next(err);
   }
-})
+});
 
 router.get("/items/:id/leaderboard", async (req, res, next) => {
   try {
-    const { id: itemId } = req.params
+    const { id: itemId } = req.params;
 
-    const leaderboard = await Bid.findAll({
+    const rows = await Bid.findAll({
       where: { itemId },
       attributes: [
         "bidderId",
@@ -170,27 +168,33 @@ router.get("/items/:id/leaderboard", async (req, res, next) => {
       include: [
         {
           model: User,
-          attributes: ["id", "email", "name"], // adjust fields
+          as: "bidder",
+          attributes: ["id", "firstName", "lastName", "imageUrl"],
         },
       ],
-      group: ["bidderId", "User.id"],
+      group: ["bidderId", "bidder.id"],
       order: [[sequelize.literal("highestBid"), "DESC"]],
       limit: 5,
-    })
+    });
+
+    const leaderboard = rows.map((row, index) => ({
+      rank: index + 1,
+      userId: row.bidder.id,
+      name:
+        [row.bidder.firstName, row.bidder.lastName].filter(Boolean).join(" ") ||
+        "Anonymous",
+      imageUrl: row.bidder.imageUrl,
+      highestBid: Number(row.get("highestBid")),
+    }));
 
     res.json({
       success: true,
       itemId,
-      leaderboard: leaderboard.map((row, index) => ({
-        rank: index + 1,
-        userId: row.User.id,
-        name: row.User.name || row.User.email,
-        highestBid: Number(row.get("highestBid")),
-      })),
-    })
+      leaderboard,
+    });
   } catch (err) {
-    next(err)
+    next(err);
   }
-})
+});
 
 export default router;

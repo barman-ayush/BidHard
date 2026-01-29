@@ -1,11 +1,12 @@
 import { Server } from "socket.io"
+import "dotenv/config"
 import { registerDashboardSocket } from "./dashboard/socket.js"
 import { registerItemSocket } from "./item/socket.js"
 
 export function initSocket(httpServer) {
   const io = new Server(httpServer, {
     cors: {
-      origin: "http://localhost:5173",
+      origin: `${process.env.FRONTEND_URL}`,
       credentials: true,
     },
   })

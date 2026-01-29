@@ -18,51 +18,29 @@ export default function AuctionDetailPage() {
   const [bidPrice, setBidPrice] = useState(0)
   const [loading, setLoading] = useState(true)
   const [placingBid, setPlacingBid] = useState(false)
-
-  // 🟢 price animation
   const [priceFlash, setPriceFlash] = useState(false)
-
-  // 🏆 leaderboard state
   const [leaderboard, setLeaderboard] = useState([])
 
-  /* =========================================================
-     🔌 SOCKET: connect + JOIN_ITEM
-     ========================================================= */
   useEffect(() => {
     if (!dbUser) return
 
     const onConnect = () => {
-      socket.emit("JOIN_ITEM", {
-        userId: dbUser.id,
-        itemId: id,
-      })
+      socket.emit("JOIN_ITEM", { userId: dbUser.id, itemId: id })
     }
 
     socket.on("connect", onConnect)
 
-    if (!socket.connected) {
-      socket.connect()
-    } else {
-      onConnect()
-    }
+    if (!socket.connected) socket.connect()
+    else onConnect()
 
-    return () => {
-      socket.off("connect", onConnect)
-    }
+    return () => socket.off("connect", onConnect)
   }, [dbUser, id])
 
-  /* =========================================================
-     🔁 SOCKET: item price updates + bid results
-     ========================================================= */
   useEffect(() => {
     const onItemPriceUpdate = ({ itemId, currentPrice }) => {
       if (itemId !== id) return
 
-      setAuction((prev) => ({
-        ...prev,
-        currentPrice,
-      }))
-
+      setAuction((prev) => ({ ...prev, currentPrice }))
       setBidPrice(currentPrice + 10)
 
       setPriceFlash(true)
@@ -71,7 +49,7 @@ export default function AuctionDetailPage() {
 
     const onBidAccepted = () => {
       setPlacingBid(false)
-      showToast("Bid placed successfully 🎉", { type: "success" })
+      showToast("Bid placed successfully", { type: "success" })
     }
 
     const onBidRejected = ({ reason }) => {
@@ -81,7 +59,7 @@ export default function AuctionDetailPage() {
 
     const onBidError = () => {
       setPlacingBid(false)
-      showToast("Something went wrong while placing bid", { type: "error" })
+      showToast("Failed to place bid", { type: "error" })
     }
 
     socket.on("ITEM_PRICE_UPDATE", onItemPriceUpdate)
@@ -97,9 +75,6 @@ export default function AuctionDetailPage() {
     }
   }, [id, showToast])
 
-  /* =========================================================
-     📡 FETCH AUCTION + TIMER
-     ========================================================= */
   useEffect(() => {
     const fetchAuction = async () => {
       try {
@@ -109,27 +84,22 @@ export default function AuctionDetailPage() {
         const data = await res.json()
 
         if (!res.ok || !data.success) {
-          throw new Error(data.message || "Auction not found")
+          throw new Error("Auction not found")
         }
 
         setAuction(data.item)
         setBidPrice(Number(data.item.currentPrice) + 10)
 
-        const serverOffset = data.serverTime - Date.now()
+        const offset = data.serverTime - Date.now()
         const endTime = new Date(data.item.auctionEndTime).getTime()
 
         const tick = () => {
-          const now = Date.now() + serverOffset
-          const diff = endTime - now
+          const diff = endTime - (Date.now() + offset)
+          if (diff <= 0) return setTimeLeft("Auction Ended")
 
-          if (diff <= 0) {
-            setTimeLeft("Auction Ended")
-            return
-          }
-
-          const d = Math.floor(diff / (1000 * 60 * 60 * 24))
-          const h = Math.floor((diff / (1000 * 60 * 60)) % 24)
-          const m = Math.floor((diff / (1000 * 60)) % 60)
+          const d = Math.floor(diff / 86400000)
+          const h = Math.floor((diff / 3600000) % 24)
+          const m = Math.floor((diff / 60000) % 60)
           const s = Math.floor((diff / 1000) % 60)
 
           setTimeLeft(`${d}d ${h}h ${m}m ${s}s`)
@@ -138,8 +108,7 @@ export default function AuctionDetailPage() {
         tick()
         const timer = setInterval(tick, 1000)
         return () => clearInterval(timer)
-      } catch (err) {
-        console.error(err)
+      } catch {
         navigate("/dashboard", { replace: true })
       } finally {
         setLoading(false)
@@ -149,62 +118,37 @@ export default function AuctionDetailPage() {
     fetchAuction()
   }, [id, navigate])
 
-  /* =========================================================
-     🏆 FETCH LEADERBOARD (every 20 seconds)
-     ========================================================= */
-//   useEffect(() => {
-//     if (!id) return
+  useEffect(() => {
+    if (!id) return
 
-//     let intervalId
+    const fetchLeaderboard = async () => {
+      try {
+        const res = await fetch(
+          `http://localhost:3000/items/${id}/leaderboard`,
+          { credentials: "include" }
+        )
 
-//     const fetchLeaderboard = async () => {
-//       try {
-//         const res = await fetch(
-//           `http://localhost:3000/items/${id}/leaderboard`,
-//           { credentials: "include" }
-//         )
+        if (!res.ok) throw new Error()
 
-//         if (!res.ok) {
-//           throw new Error("Failed to fetch leaderboard")
-//         }
+        const data = await res.json()
+        setLeaderboard(data.leaderboard || [])
+      } catch {
+        showToast("Failed to update leaderboard", { type: "error" })
+      }
+    }
 
-//         const data = await res.json()
-//         setLeaderboard(data.leaderboard || [])
-//       } catch (err) {
-//         console.error("Leaderboard error:", err)
-//         showToast("Failed to update leaderboard", { type: "error" })
-//       }
-//     }
+    fetchLeaderboard()
+    const interval = setInterval(fetchLeaderboard, 20000)
+    return () => clearInterval(interval)
+  }, [id, showToast])
 
-//     // initial fetch
-//     // fetchLeaderboard()
-
-//     // poll every 20s
-//     intervalId = setInterval(fetchLeaderboard, 20000)
-
-//     return () => clearInterval(intervalId)
-//   }, [id, showToast])
-
-  /* =========================================================
-     💰 PLACE BID
-     ========================================================= */
   const placeBid = () => {
     if (placingBid || timeLeft === "Auction Ended") return
 
     setPlacingBid(true)
-
-    socket.emit(
-      "PLACE_BID",
-      {
-        itemId: id,
-        amount: bidPrice,
-      },
-      (res) => {
-        if (!res?.ok) {
-          setPlacingBid(false)
-        }
-      }
-    )
+    socket.emit("PLACE_BID", { itemId: id, amount: bidPrice }, (res) => {
+      if (!res?.ok) setPlacingBid(false)
+    })
   }
 
   if (loading || !auction) return null
@@ -213,8 +157,6 @@ export default function AuctionDetailPage() {
     <div className="min-h-screen bg-gray-950 text-white">
       <main className="pt-24 pb-16 px-4 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* LEFT */}
           <div className="lg:col-span-2">
             <img
               src={FALLBACK_IMAGE}
@@ -225,54 +167,29 @@ export default function AuctionDetailPage() {
             <h1 className="text-4xl font-bold mb-4">{auction.title}</h1>
 
             <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-8">
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <p className="text-gray-400 text-sm mb-1">Current Bid</p>
-                  <p
-                    className={`text-3xl font-bold transition-all duration-300
-                      ${
-                        priceFlash
-                          ? "text-green-400 scale-110 drop-shadow-[0_0_12px_rgba(34,197,94,0.9)]"
-                          : "text-amber-400"
-                      }
-                    `}
-                  >
-                    ${Number(auction.currentPrice).toFixed(2)}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-gray-400 text-sm mb-1">Time Left</p>
-                  <p className="text-xl font-mono font-bold">{timeLeft}</p>
-                </div>
-              </div>
+              <p className="text-gray-400 text-sm">Current Bid</p>
+              <p
+                className={`text-3xl font-bold transition-all ${
+                  priceFlash ? "text-green-400 scale-110" : "text-amber-400"
+                }`}
+              >
+                ${Number(auction.currentPrice).toFixed(2)}
+              </p>
+              <p className="mt-2 font-mono">{timeLeft}</p>
             </div>
 
-            {/* PLACE BID */}
             <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-              <h2 className="text-xl font-bold mb-4">Place Your Bid</h2>
-
               <div className="flex gap-4">
                 <input
                   type="number"
                   value={bidPrice}
-                  min={Number(auction.currentPrice) + 1}
-                  onChange={(e) =>
-                    setBidPrice(Number(e.target.value) || 0)
-                  }
-                  className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                  onChange={(e) => setBidPrice(Number(e.target.value))}
+                  className="flex-1 px-4 py-2 bg-gray-800 rounded-lg"
                 />
-
                 <button
                   onClick={placeBid}
-                  disabled={placingBid || timeLeft === "Auction Ended"}
-                  className={`px-8 py-2 rounded-lg font-semibold transition
-                    ${
-                      placingBid
-                        ? "bg-gray-600 cursor-not-allowed"
-                        : "bg-amber-400 text-black hover:bg-amber-300"
-                    }
-                  `}
+                  disabled={placingBid}
+                  className="px-8 py-2 bg-amber-400 text-black rounded-lg"
                 >
                   {placingBid ? "Placing..." : "Place Bid"}
                 </button>
@@ -280,16 +197,31 @@ export default function AuctionDetailPage() {
             </div>
           </div>
 
-          {/* RIGHT */}
           <div className="lg:col-span-1">
             <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 sticky top-24">
-              <h2 className="text-xl font-bold mb-2">Bid History</h2>
-              <p className="text-gray-400 text-sm">
-                Live updates appear automatically
-              </p>
+              <h2 className="text-xl font-bold mb-4">Leaderboard</h2>
+
+              {leaderboard.length === 0 ? (
+                <p className="text-gray-400 text-sm">No bids yet</p>
+              ) : (
+                <ul className="space-y-3">
+                  {leaderboard.map((entry) => (
+                    <li
+                      key={entry.userId}
+                      className="flex items-center justify-between"
+                    >
+                      <span>
+                        #{entry.rank} {entry.name}
+                      </span>
+                      <span className="font-bold text-amber-400">
+                        ${entry.highestBid}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
-
         </div>
       </main>
     </div>

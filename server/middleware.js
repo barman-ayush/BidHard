@@ -5,7 +5,6 @@ export default async function middleware(req, res, next) {
   try {
     let clerkUserId = null;
 
-    // 1️⃣ Browser request (Clerk)
     if (typeof req.auth === "function") {
       const auth = await req.auth();
 
@@ -14,7 +13,6 @@ export default async function middleware(req, res, next) {
       }
     }
 
-    // 2️⃣ Socket / internal request
     if (!clerkUserId && req.body?.bidderId) {
       clerkUserId = req.body.bidderId;
     }
@@ -23,7 +21,6 @@ export default async function middleware(req, res, next) {
       throw new UnauthorizedError("User not authenticated");
     }
 
-    // 3️⃣ Fetch user from DB
     const user = await User.findOne({
       where: { clerkUserId },
     });
@@ -32,7 +29,6 @@ export default async function middleware(req, res, next) {
       throw new UnauthorizedError("User not found in database");
     }
 
-    // 🔥 Normalize to DB user
     req.user = {
       id: user.id,                 // DB ID (IMPORTANT)
       clerkUserId: user.clerkUserId,

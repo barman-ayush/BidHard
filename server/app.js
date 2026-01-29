@@ -11,11 +11,11 @@ import { clerkMiddleware } from '@clerk/express'
 import { initSocket } from "./socket/index.js"
 
 const app = express()
-const PORT = 3000
+const PORT = 3000 
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: `${process.env.FRONTEND_URL}`,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -33,13 +33,10 @@ app.use(itemRoutes)
 
 app.use(handleError)
 
-// 👇 Create HTTP server
 const httpServer = http.createServer(app)
 
-// 👇 Initialize socket
 initSocket(httpServer)
 
-// 👇 Listen
 httpServer.listen(PORT, () => {
-  console.log(`🚀 Server listening at http://localhost:${PORT}`)
+  console.log(` Server listening at ${process.env.DOMAIN}:${PORT}`)
 })

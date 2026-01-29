@@ -19,9 +19,8 @@ export default function Dashboard() {
   const [serverOffset, setServerOffset] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  /* =========================================================
-     🔐 Auth guard
-     ========================================================= */
+  const [priceFlashMap, setPriceFlashMap] = useState({})
+
   useEffect(() => {
     if (!isLoaded) return
 
@@ -40,21 +39,13 @@ export default function Dashboard() {
       userId: dbUser.id,
     })
 
-    console.log("📡 Joined dashboard socket")
-
     return () => {
-    //   socket.disconnect()
-    socket.emit("LEAVE_DASHBOAR̥D")
-      console.log("🔌 Dashboard socket disconnected")
+      socket.emit("LEAVE_DASHBOARD")
     }
   }, [dbUser])
 
-  /* =========================================================
-     🔁 Socket: dashboard bid updates
-     ========================================================= */
   useEffect(() => {
     const onDashboardBidUpdate = ({ itemId, currentPrice }) => {
-        console.log("Updating bid")
       setAuctions((prev) =>
         prev.map((item) =>
           item.id === itemId
@@ -62,6 +53,18 @@ export default function Dashboard() {
             : item
         )
       )
+
+      setPriceFlashMap((prev) => ({
+        ...prev,
+        [itemId]: true,
+      }))
+
+      setTimeout(() => {
+        setPriceFlashMap((prev) => ({
+          ...prev,
+          [itemId]: false,
+        }))
+      }, 500)
     }
 
     socket.on("DASHBOARD_BID_UPDATE", onDashboardBidUpdate)
@@ -71,9 +74,6 @@ export default function Dashboard() {
     }
   }, [])
 
-  /* =========================================================
-     📡 Fetch auctions
-     ========================================================= */
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return
 
@@ -85,7 +85,6 @@ export default function Dashboard() {
         setServerOffset(data.serverTime - Date.now())
         setAuctions(data.items)
       } catch (err) {
-        console.error("Failed to fetch items", err)
         showToast("Failed to load auctions", { type: "error" })
       } finally {
         setLoading(false)
@@ -100,7 +99,6 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <main className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        {/* Header */}
         <div className="mb-12">
           <h1 className="text-4xl font-bold mb-2">Active Auctions</h1>
           <p className="text-gray-400">
@@ -108,7 +106,6 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Auctions Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {auctions.map((item) => (
             <AuctionCard
@@ -122,6 +119,7 @@ export default function Dashboard() {
                   new Date(item.auctionEndTime).getTime() - serverOffset
                 )
               }
+              priceFlash={priceFlashMap[item.id]}
             />
           ))}
         </div>
