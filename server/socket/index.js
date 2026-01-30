@@ -12,14 +12,14 @@ export function initSocket(httpServer) {
   })
 
   io.on("connection", (socket) => {
-    console.log("🟢 Socket connected:", socket.id)
+    console.log("Socket connected:", socket.id)
 
     registerDashboardSocket(io , socket);
 
     registerItemSocket(io , socket);
 
     socket.on("disconnect", () => {
-      console.log("🔴 Socket disconnected:", socket.id)
+      console.log("Socket disconnected:", socket.id)
     })
   })
 

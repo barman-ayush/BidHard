@@ -1,4 +1,3 @@
-// models/Bid.js
 import { DataTypes } from "sequelize"
 import sequelize from "../db/db.js"
 
@@ -19,7 +18,7 @@ const Bid = sequelize.define("Bid", {
   },
 
   bidderId: {
-    type: DataTypes.INTEGER, // ✅ users.id
+    type: DataTypes.INTEGER, // users.id
     allowNull: false,
     references: {
       model: "users",

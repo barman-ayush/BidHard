@@ -79,7 +79,7 @@ export default function Dashboard() {
 
     const fetchItems = async () => {
       try {
-        const res = await fetch("http://localhost:3000/items")
+        const res = await fetch(`${BACKEND_URL}/items`)
         const data = await res.json()
 
         setServerOffset(data.serverTime - Date.now())

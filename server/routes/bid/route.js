@@ -1,4 +1,3 @@
-// routes/items.js
 import express from "express";
 import AuctionItem from "../../lib/schema/auctionItem.js";
 import sequelize from "../../lib/db/db.js";
@@ -24,7 +23,7 @@ router.get("/items", async (req, res, next) => {
     });
 
     res.json({
-      serverTime: Date.now(), // 🔥 authoritative time
+      serverTime: Date.now(), // authoritative time
       items,
     });
   } catch (err) {
@@ -49,7 +48,7 @@ router.get("/items/:id", async (req, res, next) => {
       ],
     });
 
-    // ❌ Not found
+    // Not found
     if (!item) {
       return res.status(404).json({
         success: false,
@@ -57,7 +56,7 @@ router.get("/items/:id", async (req, res, next) => {
       });
     }
 
-    // ✅ Found
+    // Found
     return res.status(200).json({
       success: true,
       serverTime: Date.now(),
@@ -76,14 +75,14 @@ router.post("/items/:id/bid", middleware, async (req, res, next) => {
     console.log(req.params, id);
 
     const { amount } = req.body;
-    const bidderId = req.user.id; // 🔥 assumes auth middleware
+    const bidderId = req.user.id;
 
     if (!amount || typeof amount !== "number" || amount <= 0) {
       await transaction.rollback();
       return res.status(400).json({ message: "Invalid bid amount" });
     }
 
-    // 🔒 Lock row
+    // Lock row
     const item = await AuctionItem.findOne({
       where: { id },
       transaction,
@@ -95,13 +94,13 @@ router.post("/items/:id/bid", middleware, async (req, res, next) => {
       return res.status(404).json({ message: "Auction item not found" });
     }
 
-    // ⏱ Auction ended
+    // Auction ended
     if (new Date() > item.auctionEndTime) {
       await transaction.rollback();
       return res.status(400).json({ message: "Auction ended" });
     }
 
-    // 💰 Bid too low
+    // Bid too low
     if (amount <= Number(item.currentPrice)) {
       await transaction.rollback();
       return res.status(409).json({ message: "Outbid" });
@@ -118,7 +117,7 @@ router.post("/items/:id/bid", middleware, async (req, res, next) => {
       {
         where: {
           id,
-          version: oldVersion, // 🔥 version guard
+          version: oldVersion, // version guard
         },
         transaction,
       }

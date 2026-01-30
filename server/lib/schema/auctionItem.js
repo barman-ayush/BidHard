@@ -1,4 +1,3 @@
-// models/AuctionItem.js
 import { DataTypes } from "sequelize"
 import sequelize from "../db/db.js"
 
@@ -24,7 +23,7 @@ const AuctionItem = sequelize.define("AuctionItem", {
     allowNull: false,
   },
 
-  // ✅ FK → users.id (INTEGER → INTEGER)
+  // FK → users.id (INTEGER → INTEGER)
   currentBidderId: {
     type: DataTypes.INTEGER,
     allowNull: true,

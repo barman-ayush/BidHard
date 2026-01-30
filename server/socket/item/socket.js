@@ -9,7 +9,7 @@ export function registerItemSocket(io, socket) {
     socket.data.joinedRoom = true;
     const roomName = `item:${itemId}`
     socket.join(roomName);
-    console.log(`🎯 User ${userId} joined ITEM room: ${roomName}`)
+    console.log(`User ${userId} joined ITEM room: ${roomName}`)
   })
 
   socket.on("PLACE_BID", async ({ itemId, amount }, ack) => {

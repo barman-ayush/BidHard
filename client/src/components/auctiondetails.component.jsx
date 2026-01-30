@@ -7,6 +7,9 @@ import { useToast } from "../context/toast.context"
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&h=600&fit=crop"
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+  
+
 export default function AuctionDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -78,7 +81,7 @@ export default function AuctionDetailPage() {
   useEffect(() => {
     const fetchAuction = async () => {
       try {
-        const res = await fetch(`http://localhost:3000/items/${id}`, {
+        const res = await fetch(`${BACKEND_URL}/items/${id}`, {
           credentials: "include",
         })
         const data = await res.json()
@@ -124,7 +127,7 @@ export default function AuctionDetailPage() {
     const fetchLeaderboard = async () => {
       try {
         const res = await fetch(
-          `http://localhost:3000/items/${id}/leaderboard`,
+          `${BACKEND_URL}/items/${id}/leaderboard`,
           { credentials: "include" }
         )
 

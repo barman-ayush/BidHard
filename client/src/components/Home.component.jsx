@@ -19,7 +19,7 @@ export default function LandingPage() {
       try {
         setLoading(true)
   
-        const res = await fetch("http://localhost:3000/auth/register", {
+        const res = await fetch(`${BACKEND_URL}/auth/register`, {
           method: "GET",
           credentials: "include",
         })
@@ -32,14 +32,14 @@ export default function LandingPage() {
   
         setDbUser(data.user)
   
-        // ✅ SUCCESS TOAST
+        // SUCCESS TOAST
         showToast("Welcome! You are logged in successfully 🎉", {
           type: "success",
         })
       } catch (err) {
         console.error("Register error:", err)
   
-        // ❌ ERROR TOAST
+        // ERROR TOAST
         showToast(
           err.message || "Something went wrong while logging in",
           { type: "error" }

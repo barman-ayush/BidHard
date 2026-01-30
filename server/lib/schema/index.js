@@ -2,7 +2,7 @@ import Bid from "./bid.js"
 import AuctionItem from "./auctionItem.js"
 import User from "./user.js"
 
-// Bid ↔ User
+// Bid - User
 Bid.belongsTo(User, {
   foreignKey: "bidderId",
   as: "bidder",
@@ -13,7 +13,7 @@ User.hasMany(Bid, {
   as: "bids",
 })
 
-// Bid ↔ AuctionItem
+// Bid - AuctionItem
 Bid.belongsTo(AuctionItem, {
   foreignKey: "itemId",
 })
