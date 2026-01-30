@@ -1,5 +1,5 @@
 import { UnauthorizedError } from "./lib/error/http-errors.js";
-import User  from "./lib/schema/user.js"; // adjust path if needed
+import User  from "./lib/schema/user.js";
 
 export default async function middleware(req, res, next) {
   try {
